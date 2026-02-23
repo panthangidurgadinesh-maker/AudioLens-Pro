@@ -1,0 +1,12 @@
+# Ignore the entire virtual environment
+.venv/
+
+# Ignore your API keys/secrets
+.env
+.streamlit/secrets.toml
+
+# Ignore the audio files your app creates
+*.mp3
+
+# Ignore Python's internal cache files
+__pycache__/
