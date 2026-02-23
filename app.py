@@ -40,7 +40,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 2. THE CORE ENGINE ---
-API_KEY = st.secrets["AIzaSyAsX-7Kj_AdMfhkNOChe8x2T_Vv0JJGwB4"]
+API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-3-flash-preview')
 
@@ -144,4 +144,5 @@ with tab2:
         with st.chat_message("user"): st.write(q)
         res = model.generate_content(f"Data: {active_text[:5000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": res})
+
         with st.chat_message("assistant"): st.write(res)
