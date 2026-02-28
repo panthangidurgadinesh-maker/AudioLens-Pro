@@ -42,7 +42,7 @@ st.markdown("""
 # --- 2. THE CORE ENGINE ---
 API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-3-flash-preview')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_yt_transcript(url):
     try:
@@ -146,3 +146,4 @@ with tab2:
         st.session_state.msgs.append({"role": "assistant", "content": res})
 
         with st.chat_message("assistant"): st.write(res)
+
