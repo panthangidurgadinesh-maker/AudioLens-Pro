@@ -8,9 +8,12 @@ import re
 import os
 import threading
 
-# --- 1. SETUP ---
-st.set_page_config(page_title="AudioLens Pro", layout="wide")
+# Change this line at the top of your app.py
+st.set_page_config(page_title="Shruta:", layout="wide", page_icon="🎧")
 
+# Update your Title as well
+st.title("🎧 Shruta:")
+st.subheader("Transforming Lectures into Wisdom")
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=API_KEY)
@@ -95,3 +98,4 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
