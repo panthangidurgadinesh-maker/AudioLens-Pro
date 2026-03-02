@@ -41,8 +41,8 @@ def make_audio(text, lang):
     new_loop.close()
 
 # --- 3. INTERFACE ---
-st.title("🎙️SHRUTA : Direct Voice Experience")
-<h4>Leave Your Documents Here And Do Your Work..<h4>
+st.title("🎙️SHRUTA : Direct Voice Generater leave your documents here and do your work..")
+
 
 if "raw_data" not in st.session_state: st.session_state.raw_data = ""
 
@@ -97,5 +97,6 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
 
 
