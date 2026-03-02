@@ -1,4 +1,6 @@
 streamlit
-groq
+google-generativeai
 pypdf
+yt-dlp
+edge-tts
 youtube-transcript-api
