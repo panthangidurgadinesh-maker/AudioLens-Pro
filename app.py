@@ -11,6 +11,53 @@ import threading
 # Change this line at the top of your app.py
 st.set_page_config(page_title="Shruta:", layout="wide", page_icon="🎧")
 # --- 1. CUSTOM STYLE (Add this after st.set_page_config) ---
+# --- GLOBAL COMPACT STYLING ---
+st.markdown("""
+    <style>
+    /* 1. Shrink All Text & Labels */
+    html, body, [class*="css"]  {
+        font-size: 14px !important; 
+    }
+    
+    /* 2. Compact Sidebar */
+    section[data-testid="stSidebar"] {
+        width: 250px !important;
+    }
+
+    /* 3. Reduce Huge Padding at the top */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 95% !important;
+    }
+
+    /* 4. Make Input Boxes Smaller */
+    div[data-baseweb="input"] {
+        height: 35px !important;
+    }
+
+    /* 5. Make Buttons Professional and Sleek */
+    .stButton>button {
+        height: 35px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+    }
+
+    /* 6. Fix the "Shruta" Header to be Small and Top-Aligned */
+    .app-header {
+        font-size: 22px !important;
+        font-weight: 800;
+        color: #F0A500;
+        margin: 0px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- THE HEADER ---
+st.markdown('<p class="app-header">🎧 Shruta | శ్రుత</p>', unsafe_allow_html=True)
+st.caption("Advanced Lecture Intelligence • High-Density View")
 st.markdown("""
     <style>
     .main-header {
@@ -119,6 +166,7 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
 
 
 
