@@ -56,7 +56,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- THE HEADER ---
-st.markdown('<p class="app-header">🎧 Shruta | శ్రుత</p>', unsafe_allow_html=True)
+st.markdown('<p class="app-header">🎧 Shruta | </p>', unsafe_allow_html=True)
 st.caption("Advanced Lecture Intelligence • High-Density View")
 st.markdown("""
     <style>
@@ -76,7 +76,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 2. DISPLAY THE LOGO & NAME ---
-st.markdown('<p class="main-header">🎧 Shruta | శ్రుత</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-header"> </p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Turning 1-Hour Lectures into Pure Wisdom</p>', unsafe_allow_html=True)
 
 # Update your Title as well
@@ -166,6 +166,7 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
 
 
 
