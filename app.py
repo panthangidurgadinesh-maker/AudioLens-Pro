@@ -1,150 +1,97 @@
 import streamlit as st
 import google.generativeai as genai
 from pypdf import PdfReader
+import yt_dlp
 import asyncio
 import edge_tts
-import time
+import re
 import os
-import glob
+import threading
 
-# --- 1. THE THEME (Animated Grid) ---
+# --- 1. SETUP ---
 st.set_page_config(page_title="AudioLens Pro", layout="wide")
-st.components.v1.html("""
-<canvas id="canvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; background:#08080a;"></canvas>
-<script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-let particles = [];
-class Particle {
-    constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.v = Math.random() * 0.4 + 0.1;
-    }
-    update() { this.y -= this.v; if (this.y < 0) this.y = canvas.height; }
-    draw() { ctx.fillStyle = 'rgba(65, 149, 252, 0.4)'; ctx.beginPath(); ctx.arc(this.x, this.y, 1, 0, Math.PI * 2); ctx.fill(); }
-}
-for (let i = 0; i < 70; i++) particles.push(new Particle());
-function anim() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(anim); }
-anim();
-</script>
-""", height=0)
 
-st.markdown("""
-    <style>
-    .stApp { background-color: transparent; background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px; }
-    div[data-testid="stExpander"], .stChatMessage, .stFileUploader { background-color: rgba(20, 20, 25, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; backdrop-filter: blur(10px); }
-    .stButton>button { background: linear-gradient(90deg, #4facfe, #00f2fe); color: black; font-weight: bold; border-radius: 20px; width: 100%; }
-    </style>
-    """, unsafe_allow_html=True)
+try:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=API_KEY)
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    target_model = next((m for m in available_models if "flash" in m), available_models[0])
+    model = genai.GenerativeModel(target_model)
+except Exception as e:
+    st.error(f"API Key Error: {e}")
+    st.stop()
 
-# --- 2. THE CORE ENGINE ---
-API_KEY = st.secrets["GEMINI_API_KEY"]
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-flash-latest')
-
-def get_yt_transcript(url):
+# --- 2. EXTRACTION ---
+def get_yt_text_pro(url):
+    ydl_opts = {'skip_download': True, 'quiet': True}
     try:
-        import re
-        from youtube_transcript_api import YouTubeTranscriptApi
-        
-        # 1. Extract Video ID
-        vid_match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})", url)
-        if not vid_match:
-            return None
-        video_id = vid_match.group(1)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return f"Title: {info.get('title')}. Extracting transcript metadata..."
+    except: return "BLOCKED"
 
-        # 2. Initialize the API
-        ytt_api = YouTubeTranscriptApi()
-        
-        # 3. Fetch the data
-        transcript_data = ytt_api.fetch(video_id, languages=['en', 'hi', 'te'])
-        
-        # ✅ THE FIX: Use t.text instead of t['text']
-        return " ".join([t.text for t in transcript_data])
-        
-    except Exception as e:
-        # Secondary backup for standard dictionary-style API returns
-        try:
-            from youtube_transcript_api import YouTubeTranscriptApi as YTA
-            return " ".join([i['text'] for i in YTA.get_transcript(video_id)])
-        except:
-            st.error(f"URL Connection Failed: {e}")
-            return None
+def make_audio(text, lang):
+    v_map = {"English": "en-US-AriaNeural", "Hindi": "hi-IN-SwaraNeural", "Telugu": "te-IN-ShrutiNeural"}
+    clean_text = re.sub(r'[*_#`\-]', '', text)
+    async def amain():
+        await edge_tts.Communicate(clean_text, v_map.get(lang, "en-US-AriaNeural")).save("lecture_voice.mp3")
+    new_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(new_loop)
+    new_loop.run_until_complete(amain())
+    new_loop.close()
 
-# --- 3. UI ---
+# --- 3. INTERFACE ---
+st.title("🎙️ AudioLens: Direct Voice Experience")
+
+if "raw_data" not in st.session_state: st.session_state.raw_data = ""
+
 with st.sidebar:
-    st.title("🛰️ AudioLens Settings")
     lang_choice = st.selectbox("🌐 Audio Language", ["English", "Hindi", "Telugu"])
-    if st.button("🗑️ Clear Local Cache"):
-        for f in glob.glob("podcast_*.mp3"): os.remove(f)
-        st.success("Cleaned!")
 
-st.title("🎙️ Intelligence Workspace")
-tab1, tab2 = st.tabs(["🚀 Transform", "🧠 Chat"])
+tab1, tab2 = st.tabs(["🚀 Audio Generator", "🧠 Deep Chat"])
 
 with tab1:
-    source_type = st.radio("Source:", ["PDF", "YouTube"], horizontal=True)
-    active_text = ""
-    if source_type == "PDF":
-        f = st.file_uploader("Upload PDF")
-        if f: active_text = "\n".join([p.extract_text() for p in PdfReader(f).pages])
+    source = st.radio("Input:", ["PDF File", "YouTube URL"], horizontal=True)
+    
+    if source == "PDF File":
+        up = st.file_uploader("Upload 1-Hour PDF")
+        if up: st.session_state.raw_data = "\n".join([p.extract_text() for p in PdfReader(up).pages])
     else:
-        url_in = st.text_input("Paste YouTube Link")
-        if url_in: active_text = get_yt_transcript(url_in)
+        url_input = st.text_input("YouTube URL:")
+        if url_input: st.session_state.raw_data = get_yt_text_pro(url_input)
 
-    if active_text and st.button("✨ Generate Podcast"):
-        output_file = f"podcast_{int(time.time())}.mp3"
-        with st.status("AI Processing...", expanded=True) as status:
-            prompt = f"Create a natural dialogue between Alex and Sam in {lang_choice} about: {active_text[:12000]}"
-            script = model.generate_content(prompt).text
-            v_map = {"English": ["en-US-ChristopherNeural", "en-US-JennyNeural"],
-                     "Hindi": ["hi-IN-MadhurNeural", "hi-IN-SwaraNeural"],
-                     "Telugu": ["te-IN-MohanNeural", "te-IN-ShrutiNeural"]}
-
-            async def synth():
-                with open(output_file, "wb") as f_out:
-                    for line in script.strip().split('\n'):
-                        if ":" not in line: continue
-                        v = v_map[lang_choice][0] if "Alex" in line else v_map[lang_choice][1]
-                        comm = edge_tts.Communicate(line.split(":", 1)[1], v)
-                        async for chunk in comm.stream():
-                            if chunk["type"] == "audio": f_out.write(chunk["data"])
-            asyncio.run(synth())
-            time.sleep(2)
-            status.update(label="✅ Ready!", state="complete")
-        st.audio(output_file)
-        # --- NEW DOWNLOAD FEATURE ---
-        st.markdown("---")
-        st.subheader("📝 Study Materials")
-        
-        # Prepare the text for the download file
-        summary_content = f"TRANSCRIPT SUMMARY & PODCAST SCRIPT\n"
-        summary_content += f"Source: {url_in if source_type == 'YouTube' else 'Uploaded PDF'}\n"
-        summary_content += f"Language: {lang_choice}\n"
-        summary_content += "="*40 + "\n\n"
-        summary_content += script  # This uses the AI-generated dialogue [cite: 11]
-
-        # Create the download button
-        st.download_button(
-            label="📥 Download Study Notes (TXT)",
-            data=summary_content,
-            file_name=f"study_notes_{int(time.time())}.txt",
-            mime="text/plain",
-            help="Click to save the AI summary to your device for offline reading."
-        )
+    if st.session_state.raw_data and st.button("🔊 Generate Full Audio Now"):
+        with st.status("🏗️ Building Audio Script...", expanded=True) as status:
+            # We generate a long hidden script (approx 800-1000 words) for long audio
+            st.write("🧠 Extracting all key points for a long-form audio...")
+            hidden_prompt = (
+                f"Convert this lecture into a comprehensive, spoken-word script in {lang_choice}. "
+                f"Ensure it is very detailed, covers every basic point, and lasts for a long duration. "
+                f"Do not summarize briefly; explain the concepts as if teaching. Context: {st.session_state.raw_data[:30000]}"
+            )
+            
+            script_response = model.generate_content(hidden_prompt)
+            hidden_script = script_response.text
+            
+            st.write("🎙️ Synthesizing long-form voice...")
+            t = threading.Thread(target=make_audio, args=(hidden_script, lang_choice))
+            t.start()
+            t.join()
+            
+            if os.path.exists("lecture_voice.mp3"):
+                status.update(label="✅ Audio Generated!", state="complete")
+                st.audio("lecture_voice.mp3")
+                st.info("💡 No text shown as requested. Use the 'Deep Chat' tab for questions.")
 
 with tab2:
     if "msgs" not in st.session_state: st.session_state.msgs = []
     for m in st.session_state.msgs:
         with st.chat_message(m["role"]): st.write(m["content"])
-    if q := st.chat_input("Ask about the content..."):
+    
+    if q := st.chat_input("Ask a question about the lecture..."):
         st.session_state.msgs.append({"role": "user", "content": q})
         with st.chat_message("user"): st.write(q)
-        res = model.generate_content(f"Data: {active_text[:5000]}. Q: {q}").text
-        st.session_state.msgs.append({"role": "assistant", "content": res})
-
-        with st.chat_message("assistant"): st.write(res)
-
-
+        
+        ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
+        st.session_state.msgs.append({"role": "assistant", "content": ai_res})
+        with st.chat_message("assistant"): st.write(ai_res)
