@@ -64,11 +64,18 @@ with tab1:
         with st.status("🏗️ Building Audio Script...", expanded=True) as status:
             # We generate a long hidden script (approx 800-1000 words) for long audio
             st.write("🧠 Extracting all key points for a long-form audio...")
-            hidden_prompt = (
-                f"Convert this lecture into a comprehensive, spoken-word script in {lang_choice}. "
-                f"Ensure it is very detailed, covers every basic point, and lasts for a long duration. "
-                f"Do not summarize briefly; explain the concepts as if teaching. Context: {st.session_state.raw_data[:30000]}"
-            )
+           # This new prompt tells the AI to match the length of the source
+prompt = f"""
+Convert this lecture/document into a natural spoken-word script in {lang}.
+Logic:
+1. If the source is short, provide a concise, high-value explanation.
+2. If the source is long (like a 1-hour lecture), provide a deep, comprehensive script covering all points.
+3. DO NOT repeat the same facts. 
+4. DO NOT add 'filler' talk. 
+5. Focus on reducing the user's burden by extracting only the wisdom.
+
+Context: {st.session_state.raw_data[:25000]}
+"""
             
             script_response = model.generate_content(hidden_prompt)
             hidden_script = script_response.text
@@ -95,4 +102,5 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
 
