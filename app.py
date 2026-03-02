@@ -10,6 +10,27 @@ import threading
 
 # Change this line at the top of your app.py
 st.set_page_config(page_title="Shruta:", layout="wide", page_icon="🎧")
+# --- 1. CUSTOM STYLE (Add this after st.set_page_config) ---
+st.markdown("""
+    <style>
+    .main-header {
+        font-size: 28px !important;
+        font-weight: 700;
+        color: #F0A500; /* Professional Gold Color */
+        margin-top: -50px; /* Moves it up to save space */
+        padding-bottom: 5px;
+    }
+    .sub-header {
+        font-size: 16px !important;
+        color: #888; /* Elegant Grey */
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. DISPLAY THE LOGO & NAME ---
+st.markdown('<p class="main-header">🎧 Shruta | శ్రుత</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Turning 1-Hour Lectures into Pure Wisdom</p>', unsafe_allow_html=True)
 
 # Update your Title as well
 st.title("🎧 SHRUTA:")
@@ -98,6 +119,7 @@ with tab2:
         ai_res = model.generate_content(f"Context: {st.session_state.raw_data[:15000]}. Q: {q}").text
         st.session_state.msgs.append({"role": "assistant", "content": ai_res})
         with st.chat_message("assistant"): st.write(ai_res)
+
 
 
 
